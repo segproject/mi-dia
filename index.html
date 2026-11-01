@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mi Día</title>
+<meta name="description" content="Agenda visual con voz, emociones y familia para apoyar la comunicación de niños con TEA.">
+<meta name="theme-color" content="#1F63B0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mi Día">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+/* Layout: "Bloques de colores". Banda superior del color de la sección, contenido al centro y barra de 4 secciones abajo. Cada sección es dueña de un color: azul Mi día, ámbar Emociones, violeta Familia, magenta Primero/Después. */
+:root{
+  --bg:#F2F5F7;
+  --surface:#FFFFFF;
+  --ink:#16242F;
+  --muted:#5A6B78;
+  --line:#D5DEE5;
+  --ok:#2E8A57;
+  --ok-ink:#FFFFFF;
+  --change:#D9692E;
+  --change-soft:#FBE6D8;
+  --danger:#B6402F;
+  --timer:#D9533F;
+  --dia:#1F63B0;--dia-tint:#E3EEFA;--dia-ink:#0C3E73;--dia-on:#FFFFFF;
+  --emo:#F0A21F;--emo-tint:#FDF1DC;--emo-ink:#6A3F05;--emo-on:#3D2402;
+  --fam:#5B4FC4;--fam-tint:#ECEBFC;--fam-ink:#2B2470;--fam-on:#FFFFFF;
+  --pd:#C23C74;--pd-tint:#FBE8F0;--pd-ink:#5E1735;--pd-on:#FFFFFF;
+  --par:#3E5566;--par-tint:#E6ECF0;--par-ink:#22323E;--par-on:#FFFFFF;
+  --shadow:0 2px 0 rgba(22,36,47,.06),0 8px 20px rgba(22,36,47,.07);
+  --display:"Baloo 2","Nunito","Trebuchet MS",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:24px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10181E;--surface:#1A252D;--ink:#E8EEF2;--muted:#9FB0BC;--line:#2C3B46;
+  --ok:#3FA36C;--ok-ink:#08150D;--change:#EB8752;--change-soft:#3A271C;--danger:#E07462;--timer:#E8664F;
+  --dia:#3C82D0;--dia-tint:#15304D;--dia-ink:#C4DCF6;--dia-on:#FFFFFF;
+  --emo:#F2AE3A;--emo-tint:#382A12;--emo-ink:#F8DCA4;--emo-on:#2E1B02;
+  --fam:#7D72E0;--fam-tint:#24214D;--fam-ink:#D6D2FB;--fam-on:#FFFFFF;
+  --pd:#DA5A90;--pd-tint:#3D1829;--pd-ink:#F6C6DA;--pd-on:#FFFFFF;
+  --par:#5E7A8F;--par-tint:#1F2C35;--par-ink:#D3DEE6;--par-on:#FFFFFF;
+  --shadow:0 2px 0 rgba(0,0,0,.25),0 8px 20px rgba(0,0,0,.25);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10181E;--surface:#1A252D;--ink:#E8EEF2;--muted:#9FB0BC;--line:#2C3B46;
+  --ok:#3FA36C;--ok-ink:#08150D;--change:#EB8752;--change-soft:#3A271C;--danger:#E07462;--timer:#E8664F;
+  --dia:#3C82D0;--dia-tint:#15304D;--dia-ink:#C4DCF6;--dia-on:#FFFFFF;
+  --emo:#F2AE3A;--emo-tint:#382A12;--emo-ink:#F8DCA4;--emo-on:#2E1B02;
+  --fam:#7D72E0;--fam-tint:#24214D;--fam-ink:#D6D2FB;--fam-on:#FFFFFF;
+  --pd:#DA5A90;--pd-tint:#3D1829;--pd-ink:#F6C6DA;--pd-on:#FFFFFF;
+  --par:#5E7A8F;--par-tint:#1F2C35;--par-ink:#D3DEE6;--par-on:#FFFFFF;
+  --shadow:0 2px 0 rgba(0,0,0,.25),0 8px 20px rgba(0,0,0,.25);color-scheme:dark}
+
+[data-section="dia"]{--sec:var(--dia);--sec-tint:var(--dia-tint);--sec-ink:var(--dia-ink);--sec-on:var(--dia-on)}
+[data-section="emo"]{--sec:var(--emo);--sec-tint:var(--emo-tint);--sec-ink:var(--emo-ink);--sec-on:var(--emo-on)}
+[data-section="fam"]{--sec:var(--fam);--sec-tint:var(--fam-tint);--sec-ink:var(--fam-ink);--sec-on:var(--fam-on)}
+[data-section="pd"]{--sec:var(--pd);--sec-tint:var(--pd-tint);--sec-ink:var(--pd-ink);--sec-on:var(--pd-on)}
+[data-section="padres"]{--sec:var(--par);--sec-tint:var(--par-tint);--sec-ink:var(--par-ink);--sec-on:var(--par-on)}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sec,var(--dia))}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sec,#1F63B0);outline-offset:3px}
+.app{height:100%;display:flex;flex-direction:column}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto;width:100%}
+
+/* Banda superior */
+header.bar{padding-top:env(safe-area-inset-top,0px);background:var(--sec);color:var(--sec-on);transition:background-color .25s ease}
+header.bar .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.brand{font-family:var(--display);font-weight:800;font-size:clamp(1.1rem,4.4vw,1.7rem);letter-spacing:.05em;text-transform:uppercase;flex:1;min-width:0;line-height:1.05;text-wrap:balance}
+.helpbtn{border:none;background:var(--surface);color:var(--timer);border-radius:999px;display:flex;align-items:center;gap:6px;padding:8px 16px 8px 10px;font-family:var(--display);font-weight:800;font-size:1.1rem;letter-spacing:.08em;box-shadow:0 2px 0 rgba(0,0,0,.12);min-height:48px;flex:none}
+.helpbtn svg{width:26px;height:26px}
+.iconbtn{width:48px;height:48px;border-radius:16px;border:none;background:rgba(255,255,255,.18);color:inherit;display:grid;place-items:center;position:relative;flex:none}
+.iconbtn svg{width:24px;height:24px}
+.iconbtn[hidden],.helpbtn[hidden]{display:none!important}
+.lock .ring{position:absolute;inset:-3px;border-radius:18px;border:3px solid currentColor;clip-path:inset(100% 0 0 0);pointer-events:none}
+.lock.holding .ring{transition:clip-path 1.5s linear;clip-path:inset(0 0 0 0)}
+
+main{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
+main .wrap{padding-block:16px 24px}
+.screen{display:flex;flex-direction:column;gap:16px}
+
+/* Barra de secciones */
+nav.tabs{background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs[hidden]{display:none}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-block:6px}
+.tab{border:none;background:transparent;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;min-height:64px;color:var(--muted);transition:background-color .2s ease,color .2s ease}
+.tab svg{width:30px;height:30px;color:var(--tc)}
+.tab span{font-family:var(--display);font-weight:700;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;text-align:center}
+.tab[data-go="dia"]{--tc:var(--dia);--tb:var(--dia-on)}
+.tab[data-go="emo"]{--tc:var(--emo);--tb:var(--emo-on)}
+.tab[data-go="fam"]{--tc:var(--fam);--tb:var(--fam-on)}
+.tab[data-go="pd"]{--tc:var(--pd);--tb:var(--pd-on)}
+.tab[aria-current="page"]{background:var(--tc);color:var(--tb)}
+.tab[aria-current="page"] svg{color:var(--tb)}
+.tab:active{transform:scale(.97)}
+
+/* Tarjeta-pictograma */
+.pic{aspect-ratio:1/1;width:100%;max-width:100%;border-radius:18px;background:var(--sec-tint);display:grid;place-items:center;overflow:hidden}
+.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.pic .emoji{font-size:clamp(3rem,14vw,6.5rem);line-height:1}
+.word{font-family:var(--display);font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:center;line-height:1.1;text-wrap:balance}
+.card{border:3px solid var(--sec-tint);background:var(--surface);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;align-items:center;box-shadow:var(--shadow);width:100%;position:relative;color:var(--ink)}
+.card .word{font-size:clamp(1.3rem,5vw,2.2rem);color:var(--sec-ink)}
+.card.now{border-color:var(--sec);border-width:5px}
+.card:active,.mini:active,.nowblock:active{transform:scale(.985)}
+.badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--change);color:#fff;font-family:var(--display);font-weight:800;font-size:.85rem;letter-spacing:.1em;padding:2px 12px;border-radius:999px;white-space:nowrap;z-index:1}
+.slotlabel{font-family:var(--display);font-weight:800;font-size:1rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sec-ink);text-align:center;margin-bottom:6px}
+
+/* Mi día: bloque Ahora */
+.nowblock{border:none;background:var(--sec);color:var(--sec-on);border-radius:28px;padding:12px 12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;position:relative;box-shadow:var(--shadow)}
+.nowblock.change{outline:5px dashed var(--change);outline-offset:3px}
+.nowblock .kicker{font-family:var(--display);font-weight:800;font-size:1rem;letter-spacing:.18em;text-transform:uppercase;opacity:.9;align-self:flex-start;padding-left:6px}
+.nowblock .pic{max-width:min(100%,34vh,420px);background:var(--sec-tint)}
+.nowblock .pic .emoji{font-size:clamp(4.5rem,18vh,9rem)}
+.nowblock .word{font-size:clamp(1.8rem,7vw,2.8rem);color:var(--sec-on)}
+.donerow{display:grid;grid-template-columns:1fr auto;gap:12px}
+.done-btn{border:none;background:var(--ok);color:var(--ok-ink);border-radius:var(--r);padding:14px;font-family:var(--display);font-weight:800;font-size:clamp(1.4rem,5vw,2rem);letter-spacing:.06em;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:var(--shadow);min-height:72px}
+.done-btn svg{width:34px;height:34px}
+.done-btn:active{transform:scale(.98)}
+.timer-btn{width:80px;border-radius:var(--r);border:3px solid var(--line);background:var(--surface);display:grid;place-items:center;box-shadow:var(--shadow);color:var(--timer)}
+.timer-btn svg{width:38px;height:38px}
+.nextbar{border:none;background:var(--sec-tint);color:var(--sec-ink);border-radius:20px;padding:8px 14px 8px 8px;display:flex;align-items:center;gap:12px;width:100%;text-align:left}
+.nextbar .pic{width:64px;flex:none;border-radius:14px;background:var(--surface)}
+.nextbar .pic .emoji{font-size:2.3rem}
+.nextbar .lbl{font-family:var(--display);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:.85rem;opacity:.8;display:block}
+.nextbar .word{font-size:clamp(1.1rem,4.4vw,1.5rem);text-align:left}
+.nextbar.change{outline:3px dashed var(--change);outline-offset:-3px}
+.strip{display:flex;gap:10px;overflow-x:auto;padding:12px 2px 8px;scroll-snap-type:x proximity}
+.mini{flex:none;width:88px;border:2px solid var(--line);background:var(--surface);border-radius:16px;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:center;position:relative;scroll-snap-align:start}
+.mini .pic{border-radius:11px}
+.mini .pic .emoji{font-size:2.3rem}
+.mini .word{font-size:.7rem;letter-spacing:.04em;color:var(--ink)}
+.mini.is-done{opacity:.45}
+.mini.is-now{border-color:var(--sec);border-width:3px;background:var(--sec-tint)}
+.mini.is-change{border-color:var(--change);border-style:dashed}
+.tick{position:absolute;top:-8px;right:-6px;width:26px;height:26px;border-radius:50%;background:var(--ok);color:var(--ok-ink);display:grid;place-items:center;z-index:1}
+.tick svg{width:16px;height:16px}
+.card .tick{top:-14px;right:-10px;width:46px;height:46px}
+.card .tick svg{width:26px;height:26px}
+.finished{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding-block:24px}
+.finished .word{font-size:clamp(1.8rem,7vw,3rem);color:var(--sec-ink)}
+.sun{width:140px;height:140px}
+
+/* Emociones, familia, primero/después */
+.ask{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,6vw,2.4rem);text-align:center;letter-spacing:.04em;text-transform:uppercase;color:var(--sec-ink);line-height:1.1}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid4 .card .word{font-size:clamp(1.1rem,4.5vw,1.8rem)}
+.grid4 .card .pic{max-width:240px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:520px){.grid3{grid-template-columns:1fr 1fr}}
+.grid3 .card .word{font-size:clamp(1rem,4vw,1.6rem)}
+.chosen{display:flex;align-items:center;gap:12px;justify-content:center;background:var(--sec);color:var(--sec-on);border:none;border-radius:999px;padding:6px 18px 6px 6px;align-self:center}
+.chosen .pic{width:52px;border-radius:50%;background:var(--surface)}
+.chosen .pic .emoji{font-size:2rem}
+.chosen .word{font-size:1.2rem;color:var(--sec-on)}
+.pill-btn{border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:10px 22px;font-family:var(--display);font-weight:700;font-size:1.15rem;box-shadow:var(--shadow);min-height:52px}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:6px;background:var(--sec-tint);border-radius:26px;padding:5px;align-self:stretch}
+.seg .pill-btn{border:none;box-shadow:none;background:transparent;color:var(--sec-ink);min-height:44px;padding:8px 16px;font-size:1rem}
+.seg .pill-btn[aria-pressed="true"]{background:var(--sec);color:var(--sec-on)}
+.ini{color:var(--sec)}
+.game .grid4 .card.dim{opacity:.35}
+.game .grid4 .card.right{border-color:var(--ok);border-width:5px}
+.stars{text-align:center;font-family:var(--display);font-weight:700;color:var(--sec-ink)}
+.solo{max-width:340px;align-self:center}
+.solo .word{font-size:clamp(1.8rem,8vw,2.8rem)}
+.slots{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.slot{width:clamp(40px,11vw,64px);aspect-ratio:1;max-width:100%;border-radius:12px;border:3px dashed var(--line);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,6vw,2.4rem);line-height:1}
+.slot.model{border:none;color:var(--muted)}
+.slot.filled{border-style:solid;border-color:var(--ok);background:var(--surface)}
+.slot.next{border-color:var(--sec);border-style:solid;background:var(--sec-tint)}
+.slot.gap{border:none;width:14px}
+.tiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.tile{width:clamp(56px,16vw,84px);aspect-ratio:1;max-width:100%;border-radius:18px;border:none;background:var(--sec);color:var(--sec-on);font-family:var(--display);font-weight:800;font-size:clamp(1.8rem,7vw,2.8rem);box-shadow:var(--shadow);line-height:1}
+.tile.used{visibility:hidden}
+.tile.hint{outline:5px solid var(--change);outline-offset:3px}
+.subtle{font-size:.85rem;color:var(--sec-ink);text-align:center;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+.pdrow{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.pdrow .card .word{font-size:clamp(1.1rem,4.5vw,1.9rem)}
+.card.pd-done{opacity:.6}
+.emoji.plus{color:var(--sec);font-family:var(--display)}
+.arrow{width:clamp(34px,9vw,56px);height:clamp(34px,9vw,56px);color:var(--sec)}
+
+/* Aviso de cambio */
+.changebox{background:var(--change-soft);border:4px dashed var(--change);border-radius:var(--r);padding:12px 12px 14px;display:flex;flex-direction:column;gap:10px;align-items:center;width:100%}
+.changebox .title{font-family:var(--display);font-weight:800;font-size:clamp(1.3rem,5vw,1.9rem);letter-spacing:.1em;color:var(--change);text-transform:uppercase;line-height:1}
+.changerow{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;width:100%;max-width:460px}
+.changerow .side{display:flex;flex-direction:column;gap:6px;align-items:center;min-width:0}
+.changerow .word{font-size:clamp(.9rem,3.6vw,1.3rem);color:var(--ink)}
+.changerow .arrow{color:var(--change)}
+.oldpic{position:relative;width:100%}
+.oldpic .pic{filter:grayscale(1);opacity:.5}
+.oldpic svg{position:absolute;inset:8%;width:84%;height:84%;color:var(--danger)}
+.old .word{text-decoration:line-through;text-decoration-thickness:3px;color:var(--muted)}
+.newpic .pic{outline:4px solid var(--change);outline-offset:-4px}
+.listen{font-size:.85rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+
+/* Capas */
+.overlay{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  padding:max(20px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.overlay .card{max-width:420px}
+.overlay .card .word{font-size:clamp(1.8rem,8vw,3rem)}
+.overlay.picker{justify-content:flex-start;overflow-y:auto;align-items:stretch}
+.overlay.picker .grid3{width:100%;max-width:760px;align-self:center}
+.overlay.picker .subtle{text-align:left;max-width:760px;width:100%;align-self:center}
+.cheer{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:40}
+.cheer .disc{width:180px;height:180px;border-radius:50%;background:var(--ok);color:var(--ok-ink);display:grid;place-items:center;animation:pop .9s ease-out forwards}
+.cheer svg{width:100px;height:100px}
+@keyframes pop{0%{transform:scale(.4);opacity:0}25%{transform:scale(1.05);opacity:1}75%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
+.tpie{width:min(72vw,46vh,340px);aspect-ratio:1;max-width:100%}
+.tleft{font-family:var(--display);font-weight:800;font-size:clamp(1.6rem,6vw,2.4rem);letter-spacing:.04em}
+.tcard{display:flex;align-items:center;gap:12px;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:8px 16px 8px 8px}
+.tcard .pic{width:72px;border-radius:12px}
+.tcard .pic .emoji{font-size:2.6rem}
+.tcard .word{font-size:1.4rem}
+.tmin{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;background:var(--surface);color:var(--timer);border:3px solid var(--line)}
+.tmin small{font-family:var(--body);font-size:.8rem;font-weight:700;color:var(--muted)}
+
+/* Inicio de sesión */
+.signcard{max-width:420px;width:100%;display:flex;flex-direction:column;gap:16px;align-items:stretch;text-align:center}
+.signcard h1{font-family:var(--display);font-weight:800;font-size:2.6rem;letter-spacing:.04em;text-transform:uppercase;margin:0;line-height:1}
+.signcard p{margin:0;color:var(--muted)}
+.signlogo{display:grid;grid-template-columns:repeat(2,44px);gap:8px;justify-content:center}
+.signlogo span{width:44px;height:44px;border-radius:12px}
+
+/* Estados */
+.notice{background:var(--surface);border:2px dashed var(--line);border-radius:18px;padding:18px;text-align:center;color:var(--muted)}
+.notice strong{color:var(--ink)}
+.banner{background:var(--change-soft);border-radius:14px;padding:10px 14px;font-size:.9rem}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:12px;z-index:60;max-width:calc(100% - 32px);font-size:.95rem}
+
+/* Modo padres */
+.parent{gap:20px}
+.parent h2{font-family:var(--display);font-weight:800;font-size:1.4rem;margin:0}
+.parent h3{font-family:var(--display);font-weight:700;font-size:1.1rem;margin:0}
+.psec{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.psec[data-k]{border-top:6px solid var(--kc,var(--line))}
+.psec[data-k="day"]{--kc:var(--dia)}.psec[data-k="emo"],.psec[data-k="need"]{--kc:var(--emo)}.psec[data-k="fam"]{--kc:var(--fam)}.psec[data-k="fav"]{--kc:var(--pd)}.psec[data-k="extra"]{--kc:var(--change)}
+.psec p{margin:0;color:var(--muted);font-size:.92rem;max-width:65ch}
+.row{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:10px;min-width:0}
+.row:first-of-type{border-top:none;padding-top:0}
+.row .pic{width:52px;flex:none;border-radius:10px;background:var(--bg)}
+.row .pic .emoji{font-size:1.8rem}
+.row .meta{flex:1;min-width:0}
+.row .meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .meta span{display:block;color:var(--muted);font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tools{display:flex;gap:6px;flex:none}
+.sbtn{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;min-width:40px;height:40px;padding:0 10px;font-size:.9rem;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.sbtn:disabled{opacity:.35;cursor:default}
+.sbtn svg{width:18px;height:18px}
+.primary{background:var(--par);color:var(--par-on);border-color:transparent;font-weight:700}
+.dangerbtn{color:var(--danger);border-color:var(--danger);background:transparent}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+label.f{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.9rem}
+label.f small{font-weight:400;color:var(--muted)}
+input[type=text],select{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:10px 12px;width:100%;min-width:0}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.editor{position:fixed;inset:0;z-index:50;background:rgba(10,20,28,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92%;overflow-y:auto;border-radius:22px 22px 0 0;display:flex;flex-direction:column;gap:14px;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet .pic{background:var(--bg)}
+@media (min-width:640px){.editor{align-items:center}.sheet{border-radius:22px}}
+.prevrow{display:flex;gap:14px;align-items:center}
+.prevrow .pic{width:110px;flex:none}
+.prevrow .btnrow{flex:1;min-width:0}
+.confirm{background:var(--change-soft);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.cheer .disc{animation:fade 1s forwards}@keyframes fade{0%,70%{opacity:1}100%{opacity:0}}}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-section="dia">
+  <header class="bar gut">
+    <div class="wrap">
+      <div class="brand" id="brand">Mi día</div>
+      <button class="helpbtn" id="helpBtn" aria-label="Necesito ayuda">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5"/><path d="M14 10.5V5.5a1.5 1.5 0 0 1 3 0V13"/><path d="M17 11.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L4 16.5a1.6 1.6 0 0 1 2.4-2L8 16"/></svg>
+        AYUDA
+      </button>
+      <button class="iconbtn lock" id="lockBtn" aria-label="Modo padres: mantén presionado">
+        <span class="ring"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="gut">
+    <div class="wrap">
+      <div id="status"></div>
+      <section class="screen" id="scrDia"></section>
+      <section class="screen" id="scrEmo" hidden></section>
+      <section class="screen" id="scrFam" hidden></section>
+      <section class="screen" id="scrPD" hidden></section>
+      <section class="screen parent" id="scrPadres" hidden></section>
+    </div>
+  </main>
+
+  <nav class="tabs gut" id="tabs" aria-label="Secciones">
+    <div class="wrap">
+      <button class="tab" data-go="dia" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8.5 15l2 2 4-4"/></svg>
+        <span>Mi día</span>
+      </button>
+      <button class="tab" data-go="emo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="3"/></svg>
+        <span>Me siento</span>
+      </button>
+      <button class="tab" data-go="fam">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="7.5" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0"/><path d="M13 20a4 4 0 0 1 8.5 0"/></svg>
+        <span>Familia</span>
+      </button>
+      <button class="tab" data-go="pd">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="7.5" height="10" rx="2"/><rect x="14" y="7" width="7.5" height="10" rx="2"/><path d="M11 12h2.2M12 10.5l1.5 1.5-1.5 1.5"/></svg>
+        <span>Primero</span>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<div class="overlay" id="show" hidden></div>
+<div class="overlay" id="timerOv" hidden style="z-index:35"></div>
+<div class="editor" id="editor" hidden></div>
+<div class="overlay" id="signin" hidden style="z-index:45"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Ejemplos (solo se cargan si el padre lo pide, o en modo sin conexión) ---------- */
+const DEFAULTS = [
+  ["day","Despertar","Es hora de despertar","☀️"],
+  ["day","Desayunar","Ahora vamos a desayunar","🥣"],
+  ["day","Lavarse los dientes","Ahora nos lavamos los dientes","🪥"],
+  ["day","Vestirse","Ahora nos vestimos","👕"],
+  ["day","Colegio","Ahora vamos al colegio","🏫"],
+  ["day","Almorzar","Ahora vamos a almorzar","🍽️"],
+  ["day","Jugar","Ahora es hora de jugar","🧸"],
+  ["day","Bañarse","Ahora vamos a bañarnos","🛁"],
+  ["day","Cenar","Ahora vamos a cenar","🍲"],
+  ["day","Dormir","Ahora vamos a dormir","🛏️"],
+  ["emo","Feliz","Me siento feliz","😊"],
+  ["emo","Triste","Me siento triste","😢"],
+  ["emo","Enojado","Me siento enojado","😠"],
+  ["emo","Asustado","Me siento asustado","😨"],
+  ["need","Abrazo","Necesito un abrazo","🤗"],
+  ["need","Descanso","Necesito descansar","🛋️"],
+  ["need","Agua","Quiero agua","💧"],
+  ["need","Ayuda","Necesito ayuda","🙋"],
+  ["fam","Yo","Este soy yo","🧒"],
+  ["fam","Mamá","Ella es mamá","👩"],
+  ["fam","Papá","Él es papá","👨"],
+  ["fam","Abuela","Ella es la abuela","👵"],
+  ["fav","Tablet","Tablet","📱"],
+  ["fav","Parque","Vamos al parque","🛝"],
+  ["fav","Juguete","Tu juguete","🚗"],
+  ["fav","Galleta","Una galleta","🍪"]
+];
+const KIND_NAME = {day:"Mi día",emo:"Emociones",need:"Qué necesito",fam:"Mi familia",fav:"Cosas que le gustan",extra:"Tarjetas para cambios"};
+const KIND_HELP = {
+  day:"Las actividades de cada día, en orden. Usa fotos reales de su casa y su colegio.",
+  emo:"Empieza con pocas emociones (3 o 4). Puedes usar fotos de él haciendo cada cara.",
+  need:"Lo que puede pedir después de decir cómo se siente. La tarjeta que se llame Ayuda es la que muestra el botón AYUDA.",
+  fav:"Premios o cosas que lo motivan, para usar en Primero / Después.",
+  fam:"Fotos de él y de su familia. Pon como palabra cómo los llama él (Mamá, Papá, Abuela Rosa) y en la voz una frase corta: Ella es mamá. Cambia la tarjeta Yo por su nombre.",
+  extra:"Tarjetas que solo aparecen cuando avisas un cambio (por ejemplo: visita a la abuela, doctor)."
+};
+
+/* ---------- Estado ---------- */
+let db = null, mode = "loading", demoReason = ""; // loading | live | demo
+let cards = [];
+let today = {date:"", done:[], change:null};
+let screen = "dia";
+let emoPick = null;
+let famMode = "ver", famRound = null;
+let quien = null, quienStars = 0, letras = null;
+let settings = {childName:""};
+let unsubCards = null, unsubToday = null;
+const audioCache = {};
+const $ = s => document.querySelector(s);
+
+function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function uid(){return "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function byOrder(a,b){return (a.order||0)-(b.order||0);}
+function ofKind(k){return cards.filter(c=>c.kind===k).sort(byOrder);}
+function cardById(id){return cards.find(c=>c.id===id);}
+function curToday(){return today.date===todayKey()?today:{date:todayKey(),done:[],change:null,current:null};}
+
+function picHTML(c){
+  if(c && c.photo) return '<div class="pic"><img src="'+esc(c.photo)+'" alt=""></div>';
+  return '<div class="pic"><span class="emoji" aria-hidden="true">'+esc((c&&c.emoji)||"⭐")+'</span></div>';
+}
+function toast(msg){
+  const t=document.createElement("div");t.className="toast";t.setAttribute("role","status");t.textContent=msg;document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+
+/* ---------- Voz ---------- */
+let esVoice=null;
+function pickVoice(){
+  try{
+    const vs=speechSynthesis.getVoices().filter(v=>/^es/i.test(v.lang));
+    const pref=["es-PE","es-419","es-US","es-MX","es-CO","es-ES"];
+    esVoice=null;
+    for(const p of pref){const v=vs.find(v=>v.lang.replace("_","-").toLowerCase()===p.toLowerCase());if(v){esVoice=v;break;}}
+    if(!esVoice) esVoice=vs[0]||null;
+  }catch(e){}
+}
+try{pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}catch(e){}
+function tts(text){
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang=esVoice?esVoice.lang:"es-419"; if(esVoice)u.voice=esVoice;
+    u.rate=0.88;u.pitch=1.05;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+let currentAudio=null;
+async function speakCard(c, fallbackText){
+  if(!c){ if(fallbackText) tts(fallbackText); return; }
+  const text=c.say||c.label;
+  if(c.hasAudio){
+    try{
+      let data=audioCache[c.id];
+      if(!data && mode==="live"){const s=await db.doc("audio/"+c.id).get(); data=s.exists?s.data().data:null; if(data)audioCache[c.id]=data;}
+      if(data){ if(currentAudio)currentAudio.pause(); try{speechSynthesis.cancel();}catch(e){} currentAudio=new Audio(data); await currentAudio.play(); return; }
+    }catch(e){}
+  }
+  tts(text);
+}
+
+/* ---------- Navegación ---------- */
+const SECTION_NAME={dia:"Mi día",emo:"¿Cómo me siento?",fam:"Mi familia",pd:"Primero / Después",padres:"Modo padres"};
+const SECTION_SAY={dia:"Mi día",emo:"¿Cómo me siento?",fam:"Mi familia",pd:"Primero, después"};
+function go(name){
+  screen=name;
+  ["dia","emo","fam","pd","padres"].forEach(k=>{$("#scr"+({dia:"Dia",emo:"Emo",fam:"Fam",pd:"PD",padres:"Padres"})[k]).hidden=name!==k;});
+  $("#app").dataset.section=name;
+  $("#brand").textContent=SECTION_NAME[name];
+  $("#tabs").hidden=name==="padres";
+  $("#helpBtn").hidden=name==="padres";
+  $("#lockBtn").hidden=name==="padres";
+  document.querySelectorAll(".tab").forEach(t=>{ if(t.dataset.go===name) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
+  if(name==="emo") emoPick=null;
+  if(name==="fam"){ famMode="ver"; famRound=null; quien=null; letras=null; }
+  render();
+  $("#main").scrollTop=0;
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{ const g=t.dataset.go; if(screen!==g){ tts(SECTION_SAY[g]); go(g); } }));
+$("#helpBtn").addEventListener("click",()=>{
+  const c=ofKind("need").find(x=>/ayuda/i.test(x.label||""))||{id:"_help",label:"Ayuda",say:"Necesito ayuda",emoji:"🙋"};
+  showBig(c,true);
+});
+
+/* Candado: mantener presionado 1.5 s */
+(function(){
+  const b=$("#lockBtn"); let t=null;
+  function start(e){ if(e.type==="keydown"&&e.key!==" "&&e.key!=="Enter")return; if(e.type==="keydown"&&e.repeat)return; if(e.type==="keydown")e.preventDefault();
+    b.classList.add("holding"); t=setTimeout(()=>{b.classList.remove("holding");t=null;go("padres");},1500); }
+  function stop(){ if(t){clearTimeout(t);t=null;} b.classList.remove("holding"); }
+  b.addEventListener("pointerdown",start);
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,stop));
+  b.addEventListener("keydown",start); b.addEventListener("keyup",stop);
+  b.addEventListener("click",e=>{ if(screen!=="padres") toast("Para el modo padres, mantén presionado el candado."); });
+  b.addEventListener("contextmenu",e=>e.preventDefault());
+})();
+
+/* ---------- Render ---------- */
+function render(){
+  renderHome();
+  if(screen==="dia") renderDia();
+  if(screen==="emo") renderEmo();
+  if(screen==="fam") renderFam();
+  if(screen==="pd") renderPD();
+  if(screen==="padres") renderPadres();
+}
+const XMARK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>';
+const ARROW='<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
+function activeChange(){
+  const t=curToday(); if(!t.change) return null;
+  const oldC=cardById(t.change.replaces), newC=cardById(t.change.cardId);
+  if(!oldC||!newC||t.done.includes(t.change.replaces)) return null;
+  return {oldC,newC};
+}
+function changeRowHTML(ch){
+  return '<div class="changerow"><div class="side old"><div class="oldpic">'+picHTML(ch.oldC)+XMARK+'</div><div class="word">'+esc(ch.oldC.label)+'</div></div>'+ARROW+
+    '<div class="side"><div class="newpic">'+picHTML(ch.newC)+'</div><div class="word">'+esc(ch.newC.label)+'</div></div></div>';
+}
+function sayChange(ch){ tts("Hoy hay un cambio. En vez de "+ch.oldC.label.toLowerCase()+": "+(ch.newC.say||ch.newC.label)); }
+function renderHome(){
+  const el=$("#status");
+  if(screen!=="dia"){ el.innerHTML=""; return; }
+  if(mode==="loading") el.innerHTML='<div class="notice">Cargando sus tarjetas…</div>';
+  else if(mode==="signin") el.innerHTML="";
+  else if(mode==="demo") el.innerHTML='<div class="banner">'+(demoReason==="config"?"Modo ejemplo: falta configurar Firebase en el archivo firebase-config.js. Los cambios no se guardan.":"Modo ejemplo: los cambios no se guardan. Recarga la página para entrar con tu cuenta.")+'</div>';
+  else if(!cards.length) el.innerHTML='<div class="notice"><strong>Todavía no hay tarjetas.</strong><br>Mantén presionado el candado para entrar al modo padres y agregarlas.</div>';
+  else el.innerHTML="";
+}
+
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5 10 18 19.5 6.5"/></svg>';
+
+function dayList(){
+  const t=curToday();
+  return ofKind("day").map(c=>{
+    if(t.change && t.change.replaces===c.id){
+      const r=cardById(t.change.cardId);
+      if(r) return {card:r,slot:c.id,change:true};
+    }
+    return {card:c,slot:c.id,change:false};
+  });
+}
+function renderDia(){
+  const el=$("#scrDia"); const list=dayList(); const t=curToday();
+  if(!list.length){ el.innerHTML='<div class="notice"><strong>No hay actividades todavía.</strong><br>Agrégalas en el modo padres (mantén presionado el candado).</div>'; return; }
+  let idx=t.current?list.findIndex(x=>x.slot===t.current&&!t.done.includes(x.slot)):-1;
+  if(idx===-1) idx=list.findIndex(x=>!t.done.includes(x.slot));
+  let html="";
+  if(idx===-1){
+    html+='<div class="finished"><svg class="sun" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="22" fill="var(--now)"/>'+
+      Array.from({length:10},(_,i)=>{const a=i*36*Math.PI/180;return '<line x1="'+(50+32*Math.cos(a))+'" y1="'+(50+32*Math.sin(a))+'" x2="'+(50+44*Math.cos(a))+'" y2="'+(50+44*Math.sin(a))+'" stroke="var(--now)" stroke-width="6" stroke-linecap="round"/>';}).join("")+
+      '</svg><div class="word">¡Terminamos el día!</div><button class="pill-btn" id="sayEnd">Escuchar</button></div>';
+  }else{
+    const now=list[idx];
+    const ch=activeChange();
+    if(ch) html+='<button class="changebox" id="diaChange"><span class="title">Hoy cambia</span>'+changeRowHTML(ch)+'<span class="listen">Toca para escuchar</span></button>';
+    let next=list.slice(idx+1).find(x=>!t.done.includes(x.slot)); if(!next) next=list.slice(0,idx).find(x=>!t.done.includes(x.slot));
+    html+='<button class="nowblock'+(now.change?" change":"")+'" data-say="'+esc(now.card.id)+'">'+(now.change?'<span class="badge">CAMBIO</span>':'')+
+      '<span class="kicker">Ahora</span>'+picHTML(now.card)+'<span class="word">'+esc(now.card.label)+'</span></button>'+
+      '<div class="donerow"><button class="done-btn" id="doneBtn" data-slot="'+esc(now.slot)+'">'+CHECK+'¡Terminé!</button>'+
+      '<button class="timer-btn" id="diaTimer" aria-label="Temporizador">'+CLOCK+'</button></div>'+
+      (next?'<button class="nextbar'+(next.change?" change":"")+'" data-say="'+esc(next.card.id)+'">'+picHTML(next.card)+'<span><span class="lbl">Después</span><span class="word">'+esc(next.card.label)+'</span></span></button>'
+           :'<div class="nextbar"><div class="pic"><span class="emoji" aria-hidden="true">🌙</span></div><span><span class="lbl">Después</span><span class="word">Fin del día</span></span></div>');
+    diaCtx={card:now.card,next:next?next.card:null};
+  }
+  html+='<div><div class="slotlabel" style="text-align:left;margin:4px 0 0">Todo el día</div><div class="strip" id="strip">'+
+    list.map((x,i)=>{const d=t.done.includes(x.slot);return '<button class="mini'+(d?" is-done":"")+(i===idx?" is-now":"")+(x.change?" is-change":"")+'" data-pick="'+esc(x.slot)+'" data-card="'+esc(x.card.id)+'" aria-label="'+esc(x.card.label)+(d?' (terminada)':'')+'">'+(d?'<span class="tick">'+CHECK+'</span>':'')+picHTML(x.card)+'<div class="word">'+esc(x.card.label)+'</div></button>';}).join("")+
+    '</div></div>';
+  el.innerHTML=html;
+  el.querySelectorAll("[data-say]").forEach(b=>b.addEventListener("click",()=>speakCard(cardById(b.dataset.say))));
+  el.querySelectorAll("[data-pick]").forEach(b=>b.addEventListener("click",()=>pickSlot(b.dataset.pick,b.dataset.card)));
+  const db_=$("#doneBtn"); if(db_) db_.addEventListener("click",()=>markDone(db_.dataset.slot));
+  const dt=$("#diaTimer"); if(dt) dt.addEventListener("click",()=>openTimerPicker(diaCtx.card,diaCtx.next));
+  const dc=$("#diaChange"); if(dc) dc.addEventListener("click",()=>{const ch=activeChange(); if(ch) sayChange(ch);});
+  const se=$("#sayEnd"); if(se) se.addEventListener("click",()=>tts("¡Terminamos el día! Muy bien."));
+  const nowMini=el.querySelector(".mini.is-now"), strip=el.querySelector(".strip");
+  if(nowMini&&strip) strip.scrollLeft=Math.max(0,nowMini.offsetLeft-strip.offsetLeft-(strip.clientWidth-nowMini.offsetWidth)/2);
+}
+function cheer(){
+  const c=document.createElement("div");c.className="cheer";c.innerHTML='<div class="disc">'+CHECK+'</div>';document.body.appendChild(c);setTimeout(()=>c.remove(),1000);
+}
+async function pickSlot(slot,cardId){
+  const t=curToday(); speakCard(cardById(cardId));
+  if(t.done.includes(slot)) return; // ya terminada: solo se escucha
+  if(t.current===slot) return;
+  await saveToday({...t,current:slot});
+  $("#main").scrollTop=0;
+}
+async function markDone(slot){
+  const t=curToday(); if(t.done.includes(slot)) return;
+  const next={date:t.date,done:t.done.concat(slot),change:t.change||null,current:null};
+  cheer(); tts("¡Muy bien!");
+  await saveToday(next);
+}
+async function saveToday(next){
+  today=next; render();
+  if(mode==="live"){ try{ await db.doc("state/today").set(next); }catch(e){ toast("No se pudo guardar. Revisa tu conexión."); } }
+}
+
+function renderEmo(){
+  const el=$("#scrEmo");
+  if(!emoPick){
+    const emos=ofKind("emo");
+    if(!emos.length){ el.innerHTML='<div class="notice"><strong>No hay emociones todavía.</strong><br>Agrégalas en el modo padres.</div>'; return; }
+    el.innerHTML='<div class="ask">¿Cómo me siento?</div><div class="grid4">'+emos.map(c=>'<button class="card" data-emo="'+esc(c.id)+'">'+picHTML(c)+'<div class="word">'+esc(c.label)+'</div></button>').join("")+'</div>';
+    el.querySelectorAll("[data-emo]").forEach(b=>b.addEventListener("click",()=>{ const c=cardById(b.dataset.emo); speakCard(c); emoPick=c.id; setTimeout(()=>{ if(screen==="emo"){renderEmo();} },350); }));
+  }else{
+    const e=cardById(emoPick); const needs=ofKind("need");
+    el.innerHTML='<button class="chosen" id="chosen">'+picHTML(e)+'<span class="word">'+esc(e?e.label:"")+'</span></button>'+
+      '<div class="ask">¿Qué necesito?</div><div class="grid4">'+needs.map(c=>'<button class="card" data-need="'+esc(c.id)+'">'+picHTML(c)+'<div class="word">'+esc(c.label)+'</div></button>').join("")+'</div>'+
+      '<button class="pill-btn" id="emoBack" style="align-self:center">Elegir otra emoción</button>';
+    $("#chosen").addEventListener("click",()=>speakCard(e));
+    $("#emoBack").addEventListener("click",()=>{emoPick=null;renderEmo();});
+    el.querySelectorAll("[data-need]").forEach(b=>b.addEventListener("click",()=>showBig(cardById(b.dataset.need))));
+  }
+}
+function showBig(c,isHelp){
+  const o=$("#show");
+  o.innerHTML='<button class="card" id="bigCard">'+picHTML(c)+'<div class="word">'+esc(c.label)+'</div></button><button class="pill-btn" id="bigDone">Listo</button>';
+  o.hidden=false; speakCard(c);
+  $("#bigCard").addEventListener("click",()=>speakCard(c));
+  $("#bigDone").addEventListener("click",()=>{o.hidden=true; if(isHelp) return; emoPick=null;renderEmo();});
+}
+
+/* ---------- Temporizador visual ---------- */
+const CLOCK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2"/><path d="M9.5 2.5h5"/><path d="M12 2.5V6"/></svg>';
+let diaCtx={card:null,next:null};
+let tmr=null;
+function wedge(frac){
+  if(frac>=0.9995) return '<circle cx="100" cy="100" r="90" fill="var(--timer)"/>';
+  if(frac<=0) return '';
+  const a=frac*2*Math.PI, x=100+90*Math.sin(a), y=100-90*Math.cos(a);
+  return '<path d="M100 100 L100 10 A90 90 0 '+(frac>0.5?1:0)+' 1 '+x.toFixed(2)+' '+y.toFixed(2)+' Z" fill="var(--timer)"/>';
+}
+function pieSVG(frac){
+  let ticks=""; for(let i=0;i<12;i++){const a=i*Math.PI/6;ticks+='<line x1="'+(100+92*Math.sin(a)).toFixed(1)+'" y1="'+(100-92*Math.cos(a)).toFixed(1)+'" x2="'+(100+98*Math.sin(a)).toFixed(1)+'" y2="'+(100-98*Math.cos(a)).toFixed(1)+'" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/>';}
+  return '<svg class="tpie" viewBox="0 0 200 200" role="img" aria-label="Tiempo que queda"><circle cx="100" cy="100" r="98" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/>'+ticks+'<g id="tWedge">'+wedge(frac)+'</g><circle cx="100" cy="100" r="9" fill="var(--ink)"/></svg>';
+}
+function minsLeft(ms){const m=Math.ceil(ms/60000);return m<=1?(ms<=0?"¡Listo!":"Menos de 1 minuto"):m+" minutos";}
+function tcardHTML(c){return c?'<div class="tcard">'+picHTML(c)+'<span class="word">'+esc(c.label)+'</span></div>':'';}
+function openTimerPicker(card,next){
+  const o=$("#timerOv");
+  o.innerHTML=tcardHTML(card)+'<div class="ask">¿Cuánto tiempo?</div><div class="tiles">'+[1,2,5,10,15,20].map(m=>'<button class="tile tmin" data-min="'+m+'">'+m+'<small>min</small></button>').join("")+'</div><button class="pill-btn" id="tCancel">Cancelar</button>';
+  o.hidden=false;
+  o.querySelectorAll("[data-min]").forEach(b=>b.addEventListener("click",()=>startTimer(+b.dataset.min,card,next)));
+  $("#tCancel").addEventListener("click",stopTimer);
+}
+function chime(){
+  try{const C=window.AudioContext||window.webkitAudioContext; const ctx=new C();
+    [[660,0],[880,.28],[660,.56]].forEach(([f,t])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=f;
+      g.gain.setValueAtTime(0,ctx.currentTime+t);g.gain.linearRampToValueAtTime(.18,ctx.currentTime+t+.03);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+t+.5);
+      o.connect(g);g.connect(ctx.destination);o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+.55);});
+    setTimeout(()=>{try{ctx.close();}catch(e){}},1600);
+  }catch(e){}
+}
+async function startTimer(min,card,next){
+  const total=min*60000;
+  tmr={end:Date.now()+total,total,card,next,warned:min<=1,iv:null,lock:null};
+  const o=$("#timerOv");
+  o.innerHTML=tcardHTML(card)+pieSVG(1)+'<div class="tleft" id="tLeft">'+minsLeft(total)+'</div><button class="pill-btn" id="tStop">Parar</button>';
+  $("#tStop").addEventListener("click",stopTimer);
+  tts("Tienes "+min+(min===1?" minuto":" minutos"));
+  try{ if(navigator.wakeLock) tmr.lock=await navigator.wakeLock.request("screen"); }catch(e){}
+  tmr.iv=setInterval(tickTimer,250);
+}
+function tickTimer(){
+  if(!tmr) return;
+  const rem=tmr.end-Date.now(); const w=$("#tWedge"), l=$("#tLeft");
+  if(w) w.innerHTML=wedge(Math.max(0,rem/tmr.total));
+  if(l) l.textContent=minsLeft(rem);
+  if(!tmr.warned && rem<=60000){ tmr.warned=true; tts("Falta un minuto"); }
+  if(rem<=0) finishTimer();
+}
+function finishTimer(){
+  const t=tmr; clearInterval(t.iv); t.iv=null;
+  chime();
+  setTimeout(()=>tts("¡Se acabó el tiempo!"+(t.next?" Ahora: "+(t.next.say||t.next.label):"")),900);
+  const o=$("#timerOv");
+  o.innerHTML='<div class="ask">¡Se acabó el tiempo!</div>'+
+    (t.next?'<div class="slotlabel">Ahora</div><button class="card" id="tNext" style="max-width:300px">'+picHTML(t.next)+'<div class="word">'+esc(t.next.label)+'</div></button>':pieSVG(0))+
+    '<button class="pill-btn" id="tOk">Listo</button>';
+  const tn=$("#tNext"); if(tn) tn.addEventListener("click",()=>speakCard(t.next));
+  $("#tOk").addEventListener("click",stopTimer);
+}
+function stopTimer(){
+  if(tmr){ if(tmr.iv) clearInterval(tmr.iv); try{ if(tmr.lock) tmr.lock.release(); }catch(e){} }
+  tmr=null; const o=$("#timerOv"); o.hidden=true; o.innerHTML="";
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && tmr && tmr.iv) tickTimer(); });
+
+/* ---------- Primero / Después ---------- */
+function loadPD(){try{const v=JSON.parse(localStorage.getItem("mi-dia-pd")||"null");if(v&&typeof v==="object")return {first:v.first||null,next:v.next||null,firstDone:!!v.firstDone};}catch(e){}return {first:null,next:null,firstDone:false};}
+let pd=loadPD();
+function savePD(){try{localStorage.setItem("mi-dia-pd",JSON.stringify(pd));}catch(e){}}
+function renderPD(){
+  const el=$("#scrPD"); const f=cardById(pd.first), n=cardById(pd.next);
+  const slot=(c,role,label,active,done)=>'<div><div class="slotlabel">'+label+'</div><button class="card'+(active&&c?" now":"")+(done?" pd-done":"")+'" data-pdslot="'+role+'">'+
+    (done?'<span class="tick">'+CHECK+'</span>':'')+
+    (c?picHTML(c)+'<div class="word">'+esc(c.label)+'</div>':'<div class="pic"><span class="emoji plus" aria-hidden="true">+</span></div><div class="word">Elegir</div>')+'</button></div>';
+  let h='<div class="pdrow">'+slot(f,"first","Primero",!pd.firstDone,pd.firstDone&&!!f)+ARROW+slot(n,"next","Después",pd.firstDone,false)+'</div>';
+  if(f&&n){
+    h+='<div class="donerow">'+(pd.firstDone
+        ?'<button class="pill-btn" id="pdAgain">Empezar otra vez</button>'
+        :'<button class="done-btn" id="pdDone">'+CHECK+'¡Terminé!</button>')+
+      '<button class="timer-btn" id="pdTimer" aria-label="Temporizador">'+CLOCK+'</button></div>'+
+      '<div class="btnrow" style="justify-content:center"><button class="pill-btn" id="pdSay">Escuchar</button></div>';
+  }else{
+    h+='<div class="notice">Toca <strong>Primero</strong> y <strong>Después</strong> para elegir las tarjetas.</div>';
+  }
+  if(f||n) h+='<div class="btnrow" style="justify-content:center"><button class="sbtn" data-pdpick="first">Cambiar primero</button><button class="sbtn" data-pdpick="next">Cambiar después</button></div>';
+  el.innerHTML=h;
+  el.querySelectorAll("[data-pdslot]").forEach(b=>b.addEventListener("click",()=>{const role=b.dataset.pdslot;const c=cardById(pd[role]);if(c)speakCard(c);else openPicker(role);}));
+  el.querySelectorAll("[data-pdpick]").forEach(b=>b.addEventListener("click",()=>openPicker(b.dataset.pdpick)));
+  const d=$("#pdDone"); if(d) d.addEventListener("click",()=>{pd.firstDone=true;savePD();cheer();tts("¡Muy bien! Ahora "+(n.label||"").toLowerCase());renderPD();});
+  const a=$("#pdAgain"); if(a) a.addEventListener("click",()=>{pd.firstDone=false;savePD();renderPD();});
+  const s=$("#pdSay"); if(s) s.addEventListener("click",()=>tts("Primero "+f.label.toLowerCase()+". Después "+n.label.toLowerCase()));
+  const tb=$("#pdTimer"); if(tb) tb.addEventListener("click",()=>pd.firstDone?openTimerPicker(n,null):openTimerPicker(f,n));
+}
+function openPicker(role){
+  const o=$("#show"); o.classList.add("picker");
+  const groups=[["fav","Le gusta"],["day","Mi día"],["extra","Otras"],["need","Necesito"]];
+  o.innerHTML='<div class="ask">Elegir '+(role==="first"?"primero":"después")+'</div>'+
+    groups.map(([k,t])=>{const l=ofKind(k);return l.length?'<div class="subtle">'+t+'</div><div class="grid3">'+l.map(c=>'<button class="card" data-pc="'+esc(c.id)+'">'+picHTML(c)+'<div class="word">'+esc(c.label)+'</div></button>').join("")+'</div>':"";}).join("")+
+    '<button class="pill-btn" id="pcCancel" style="align-self:center">Cancelar</button>';
+  o.hidden=false; o.scrollTop=0;
+  const close=()=>{o.hidden=true;o.classList.remove("picker");o.innerHTML="";};
+  o.querySelectorAll("[data-pc]").forEach(b=>b.addEventListener("click",()=>{pd[role]=b.dataset.pc;pd.firstDone=false;savePD();close();speakCard(cardById(b.dataset.pc));renderPD();}));
+  $("#pcCancel").addEventListener("click",close);
+}
+
+/* ---------- Mi familia ---------- */
+function nameHTML(label){
+  const s=String(label||""); if(!s) return "";
+  const first=Array.from(s)[0]; return '<span class="ini">'+esc(first)+'</span>'+esc(s.slice(first.length));
+}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function newRound(){
+  const fam=ofKind("fam"); if(fam.length<2) return null;
+  const prev=famRound&&famRound.target;
+  let pool=fam.filter(c=>c.id!==prev); if(!pool.length) pool=fam;
+  const target=pool[Math.floor(Math.random()*pool.length)];
+  const n=fam.length>=4?3:2;
+  const others=shuffle(fam.filter(c=>c.id!==target.id)).slice(0,n-1);
+  return {target:target.id,options:shuffle([target].concat(others)).map(c=>c.id),wrong:[],solved:false};
+}
+function newQuien(){
+  const fam=ofKind("fam"); if(!fam.length) return null;
+  const prev=quien&&quien.target; let pool=fam.filter(c=>c.id!==prev); if(!pool.length) pool=fam;
+  return {target:pool[Math.floor(Math.random()*pool.length)].id,help:0,solved:false};
+}
+function nameOptions(){
+  const out=[]; const cn=(settings.childName||"").trim(); if(cn) out.push(cn);
+  ofKind("fam").forEach(c=>{const l=(c.label||"").trim(); const lo=l.toLowerCase();
+    if(l && lo!=="yo" && lo!==cn.toLowerCase() && Array.from(l).length<=12 && !out.includes(l)) out.push(l);});
+  return out;
+}
+function skipGaps(chars,i){while(i<chars.length&&chars[i]===" ")i++;return i;}
+function newLetras(name){
+  const chars=Array.from(String(name).toUpperCase());
+  const tiles=shuffle(chars.filter(ch=>ch!==" ")).map((ch,k)=>({ch,key:k,used:false}));
+  return {name,chars,pos:skipGaps(chars,0),tiles,done:false,hint:null};
+}
+function tapTile(key){
+  if(!letras||letras.done) return;
+  const t=letras.tiles.find(x=>x.key===key); if(!t||t.used) return;
+  const want=letras.chars[letras.pos];
+  if(t.ch===want){
+    t.used=true; letras.hint=null; tts(t.ch.toLowerCase());
+    letras.pos=skipGaps(letras.chars,letras.pos+1);
+    if(letras.pos>=letras.chars.length){ letras.done=true; setTimeout(()=>{cheer();tts("¡"+letras.name+"!");},500); }
+  }else{
+    const ok=letras.tiles.find(x=>!x.used&&x.ch===want); letras.hint=ok?ok.key:null;
+    tts("Busca la "+want.toLowerCase());
+  }
+  renderFam();
+}
+function askRound(){ const t=famRound&&cardById(famRound.target); if(t) tts("¿Dónde está "+t.label+"?"); }
+function renderFam(){
+  const el=$("#scrFam"); const fam=ofKind("fam");
+  if(!fam.length){ el.innerHTML='<div class="notice"><strong>Todavía no hay fotos de la familia.</strong><br>Agrégalas en el modo padres (mantén presionado el candado).</div>'; return; }
+  let h='<div class="seg"><button class="pill-btn" id="famVer" aria-pressed="'+(famMode==="ver")+'">Ver</button>'+
+        '<button class="pill-btn" id="famJugar" aria-pressed="'+(famMode==="jugar")+'">¿Dónde está?</button>'+
+        '<button class="pill-btn" id="famQuien" aria-pressed="'+(famMode==="quien")+'">¿Quién es?</button>'+
+        '<button class="pill-btn" id="famLetras" aria-pressed="'+(famMode==="letras")+'">Mi nombre</button></div>';
+  if(famMode==="quien"){
+    if(!quien) quien=newQuien();
+    const c=cardById(quien.target);
+    const showName=quien.solved||quien.help>=2, showIni=quien.help===1;
+    const first=c?Array.from(c.label||"")[0]||"":"";
+    h+='<div class="ask">¿Quién es?</div>'+
+      '<div class="card solo'+(quien.solved?" now":"")+'">'+picHTML(c)+
+        '<div class="word">'+(showName?nameHTML(c.label):(showIni?'<span class="ini">'+esc(first)+'</span>…':'&nbsp;'))+'</div></div>'+
+      '<div class="btnrow" style="justify-content:center">'+
+        '<button class="pill-btn" id="qHelp"'+(quien.solved?" disabled":"")+'>Ayuda</button>'+
+        '<button class="done-btn" id="qOk" style="min-height:56px;padding:10px 22px;font-size:1.3rem"'+(quien.solved?" disabled":"")+'>'+CHECK+'Lo dijo</button>'+
+        '<button class="pill-btn" id="qNext">Siguiente</button></div>'+
+      '<div class="stars">'+(quienStars?"★ ".repeat(Math.min(quienStars,10)).trim()+(quienStars>10?" +"+(quienStars-10):""):"Espera unos segundos a que lo diga")+'</div>';
+  }else if(famMode==="letras"){
+    const names=nameOptions();
+    if(!names.length){ h+='<div class="notice"><strong>Falta su nombre.</strong><br>Escríbelo en el modo padres, en la sección "Mi nombre con letras".</div>'; }
+    else{
+      if(!letras||!names.includes(letras.name)) letras=newLetras(names[0]);
+      if(names.length>1) h+='<div class="seg">'+names.map((n,i)=>'<button class="pill-btn" data-nm="'+i+'" aria-pressed="'+(n===letras.name)+'">'+esc(n)+'</button>').join("")+'</div>';
+      h+='<div class="subtle">Mira</div><div class="slots">'+letras.chars.map(ch=>ch===" "?'<span class="slot gap"></span>':'<span class="slot model">'+esc(ch)+'</span>').join("")+'</div>'+
+        '<div class="subtle">Arma</div><div class="slots">'+letras.chars.map((ch,i)=>ch===" "?'<span class="slot gap"></span>':'<span class="slot'+(i<letras.pos?" filled":"")+(i===letras.pos&&!letras.done?" next":"")+'">'+(i<letras.pos?esc(ch):"")+'</span>').join("")+'</div>';
+      if(letras.done) h+='<div class="btnrow" style="justify-content:center"><button class="pill-btn" id="lSay">Escuchar</button><button class="pill-btn" id="lAgain">Otra vez</button></div>';
+      else h+='<div class="tiles">'+letras.tiles.map(t=>'<button class="tile'+(t.used?" used":"")+(letras.hint===t.key?" hint":"")+'" data-tile="'+t.key+'" aria-label="Letra '+esc(t.ch)+'">'+esc(t.ch)+'</button>').join("")+'</div>';
+    }
+  }else if(famMode==="ver"){
+    h+='<div class="grid3">'+fam.map(c=>'<button class="card" data-fam="'+esc(c.id)+'">'+picHTML(c)+'<div class="word">'+nameHTML(c.label)+'</div></button>').join("")+'</div>';
+  }else{
+    if(fam.length<2){ h+='<div class="notice">Para jugar se necesitan al menos 2 personas en "Mi familia".</div>'; }
+    else{
+      if(!famRound) famRound=newRound();
+      const t=cardById(famRound.target);
+      h+='<div class="game"><button class="ask" id="famAsk" style="border:none;background:none;width:100%">¿Dónde está '+nameHTML(t?t.label:"")+'?</button>'+
+         '<div class="grid4">'+famRound.options.map(id=>{const c=cardById(id);if(!c)return"";const cls=(famRound.wrong.includes(id)?" dim":"")+(famRound.solved&&id===famRound.target?" right":"");
+           return '<button class="card'+cls+'" data-opt="'+esc(id)+'">'+picHTML(c)+(famRound.solved||famRound.wrong.includes(id)?'<div class="word">'+nameHTML(c.label)+'</div>':'')+'</button>';}).join("")+'</div></div>';
+    }
+  }
+  el.innerHTML=h;
+  $("#famVer").addEventListener("click",()=>{famMode="ver";renderFam();});
+  $("#famJugar").addEventListener("click",()=>{famMode="jugar";famRound=newRound();renderFam();askRound();});
+  $("#famQuien").addEventListener("click",()=>{famMode="quien";quien=newQuien();renderFam();tts("¿Quién es?");});
+  $("#famLetras").addEventListener("click",()=>{famMode="letras";letras=null;renderFam();if(letras)tts("Vamos a armar "+letras.name);});
+  const qh=$("#qHelp"); if(qh) qh.addEventListener("click",()=>{const c=cardById(quien.target);quien.help=Math.min(2,quien.help+1);if(quien.help===2&&c)tts(c.label);renderFam();});
+  const qo=$("#qOk"); if(qo) qo.addEventListener("click",()=>{const c=cardById(quien.target);quien.solved=true;quienStars++;cheer();if(c)tts("¡Muy bien! Es "+c.label);renderFam();
+    setTimeout(()=>{if(screen==="fam"&&famMode==="quien"&&quien&&quien.solved){quien=newQuien();renderFam();tts("¿Quién es?");}},2200);});
+  const qn=$("#qNext"); if(qn) qn.addEventListener("click",()=>{quien=newQuien();renderFam();tts("¿Quién es?");});
+  el.querySelectorAll("[data-nm]").forEach(b=>b.addEventListener("click",()=>{const n=nameOptions()[+b.dataset.nm];letras=newLetras(n);renderFam();tts("Vamos a armar "+n);}));
+  el.querySelectorAll("[data-tile]").forEach(b=>b.addEventListener("click",()=>tapTile(+b.dataset.tile)));
+  const ls=$("#lSay"); if(ls) ls.addEventListener("click",()=>tts(letras.name));
+  const la=$("#lAgain"); if(la) la.addEventListener("click",()=>{letras=newLetras(letras.name);renderFam();tts("Vamos a armar "+letras.name);});
+  el.querySelectorAll("[data-fam]").forEach(b=>b.addEventListener("click",()=>speakCard(cardById(b.dataset.fam))));
+  const a=$("#famAsk"); if(a) a.addEventListener("click",askRound);
+  el.querySelectorAll("[data-opt]").forEach(b=>b.addEventListener("click",()=>{
+    if(!famRound||famRound.solved) return;
+    const id=b.dataset.opt, c=cardById(id), t=cardById(famRound.target);
+    if(id===famRound.target){
+      famRound.solved=true; cheer(); tts("¡Sí! Es "+t.label); renderFam();
+      setTimeout(()=>{ if(screen==="fam"&&famMode==="jugar"){ famRound=newRound(); renderFam(); askRound(); } },2200);
+    }else{
+      if(!famRound.wrong.includes(id)) famRound.wrong.push(id);
+      tts("Es "+c.label+". ¿Dónde está "+t.label+"?"); renderFam();
+    }
+  }));
+}
+
+/* ---------- Modo padres ---------- */
+function renderPadres(){
+  const el=$("#scrPadres"); const t=curToday();
+  let h='<div class="btnrow" style="justify-content:space-between;align-items:center"><h2>Configurar tarjetas</h2><button class="sbtn primary" id="exitP">Salir del modo padres</button></div>';
+  if(currentUser) h+='<div class="psec"><h3>Cuenta</h3><p>Conectado como '+esc(currentUser.email||"")+'. Usa esta misma cuenta en otros dispositivos para ver las mismas tarjetas.</p><div class="btnrow"><button class="sbtn" id="signOut">Cerrar sesión</button></div></div>';
+  if(mode==="demo") h+='<div class="banner">Modo ejemplo: los cambios no se guardarán. Recarga la página y entra con tu cuenta de Google.</div>';
+  if(mode==="live" && !cards.length) h+='<div class="psec"><h3>Empezar</h3><p>Carga tarjetas de ejemplo (rutina, emociones y necesidades) y luego cámbiales la foto y la voz.</p><div class="btnrow"><button class="sbtn primary" id="seedBtn">Cargar ejemplos</button></div></div>';
+
+  // Cambio de hoy
+  const days=ofKind("day"), extras=ofKind("extra");
+  const ch=t.change;
+  h+='<div class="psec"><h3>Cambio de hoy</h3><p>Avisa con anticipación si hoy una actividad cambia. Se marca con borde naranja y la palabra CAMBIO. Al día siguiente se borra solo.</p>';
+  if(ch && cardById(ch.replaces) && cardById(ch.cardId)){
+    h+='<div class="row">'+picHTML(cardById(ch.cardId))+'<div class="meta"><b>'+esc(cardById(ch.cardId).label)+'</b><span>en lugar de: '+esc(cardById(ch.replaces).label)+'</span></div><div class="tools"><button class="sbtn dangerbtn" id="clearCh">Quitar cambio</button></div></div>';
+  }else{
+    h+='<label class="f" for="chFrom">¿Qué actividad cambia?<select id="chFrom">'+days.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.label)+'</option>').join("")+'</select></label>'+
+       '<label class="f" for="chTo">¿Por cuál?<small>Elige una tarjeta de cambios o una actividad.</small><select id="chTo">'+
+       (extras.length?'<optgroup label="Tarjetas para cambios">'+extras.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.label)+'</option>').join("")+'</optgroup>':'')+
+       '<optgroup label="Actividades">'+days.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.label)+'</option>').join("")+'</optgroup></select></label>'+
+       '<div class="btnrow"><button class="sbtn primary" id="setCh"'+(days.length?"":" disabled")+'>Avisar el cambio</button><button class="sbtn" data-add="extra">Crear tarjeta para cambio</button></div>';
+  }
+  h+='</div>';
+
+  h+='<div class="psec"><h3>Progreso de hoy</h3><p>'+t.done.length+' de '+days.length+' actividades terminadas.</p><div class="btnrow"><button class="sbtn" id="resetDay">Empezar el día de nuevo</button></div></div>';
+
+  h+='<div class="psec"><h3>Mi nombre con letras</h3><p>Escribe su nombre como quieres que lo arme. Para empezar, mejor solo el primer nombre. También podrá armar los nombres de "Mi familia" que tengan 12 letras o menos.</p>'+
+     '<label class="f" for="childName">Nombre de tu hijo<input type="text" id="childName" maxlength="20" value="'+esc(settings.childName)+'" placeholder="Ej.: Mateo"></label>'+
+     '<div class="btnrow"><button class="sbtn primary" id="saveName">Guardar nombre</button></div></div>';
+  ["day","emo","need","fam","fav","extra"].forEach(k=>{
+    const list=ofKind(k);
+    h+='<div class="psec" data-k="'+k+'"><h3>'+KIND_NAME[k]+'</h3><p>'+KIND_HELP[k]+'</p>'+
+      list.map((c,i)=>'<div class="row">'+picHTML(c)+'<div class="meta"><b>'+esc(c.label)+'</b><span>'+(c.hasAudio?"🔊 Tu voz · ":"Voz del celular · ")+esc(c.say||"")+'</span></div><div class="tools">'+
+        (k!=="extra"?'<button class="sbtn" data-mv="'+esc(c.id)+'" data-dir="-1" aria-label="Subir"'+(i===0?" disabled":"")+'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 14l6-6 6 6"/></svg></button>'+
+        '<button class="sbtn" data-mv="'+esc(c.id)+'" data-dir="1" aria-label="Bajar"'+(i===list.length-1?" disabled":"")+'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 10l6 6 6-6"/></svg></button>':'')+
+        '<button class="sbtn" data-edit="'+esc(c.id)+'">Editar</button></div></div>').join("")+
+      '<div class="btnrow"><button class="sbtn" data-add="'+k+'">+ Agregar</button></div></div>';
+  });
+  h+='<div class="psec"><h3>Cómo usarla</h3><p>En "Mi día", tocar una actividad de la fila "Todo el día" la pone como "Ahora", para hacerla fuera de orden. Úsenla juntos: tú le muestras la tarjeta y la dices en voz alta, él la toca y la repite. Para grabar tu voz, usa la grabadora de tu celular (una frase corta, menos de 10 segundos) y sube el audio en "Editar". Si no hay grabación, la tarjeta usa la voz del celular.</p></div>';
+  el.innerHTML=h;
+
+  $("#exitP").addEventListener("click",()=>go("dia"));
+  const so=$("#signOut"); if(so) so.addEventListener("click",async()=>{ try{ await auth.signOut(); go("dia"); }catch(e){ toast("No se pudo cerrar la sesión."); } });
+  const sb=$("#seedBtn"); if(sb) sb.addEventListener("click",seed);
+  $("#saveName").addEventListener("click",async()=>{
+    const v=$("#childName").value.trim(); settings={childName:v};
+    try{ if(mode==="live") await db.doc("settings/main").set(settings); toast(v?"Nombre guardado.":"Nombre borrado."); }
+    catch(e){ toast("No se pudo guardar. Revisa tu conexión."); }
+  });
+  const cc=$("#clearCh"); if(cc) cc.addEventListener("click",()=>{const t=curToday();saveToday({...t,change:null});});
+  const sc=$("#setCh"); if(sc) sc.addEventListener("click",()=>{
+    const from=$("#chFrom").value,to=$("#chTo").value; if(!from||!to)return;
+    if(from===to){toast("Elige una tarjeta distinta para el cambio.");return;}
+    const t=curToday(); saveToday({...t,done:t.done.filter(s=>s!==from),change:{replaces:from,cardId:to}}); toast("Cambio avisado. Muéstraselo con anticipación.");
+  });
+  $("#resetDay").addEventListener("click",()=>{const t=curToday();saveToday({...t,done:[],current:null});toast("El día empieza de nuevo.");});
+  el.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>openEditor(null,b.dataset.add)));
+  el.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>openEditor(cardById(b.dataset.edit))));
+  el.querySelectorAll("[data-mv]").forEach(b=>b.addEventListener("click",()=>move(b.dataset.mv,+b.dataset.dir)));
+}
+
+async function writeCard(c){
+  const i=cards.findIndex(x=>x.id===c.id); if(i>=0)cards[i]=c; else cards.push(c);
+  if(mode==="live"){ const {id,...body}=c; await db.doc("cards/"+id).set(body); }
+}
+async function move(id,dir){
+  const c=cardById(id); const list=ofKind(c.kind); const i=list.indexOf(c); const o=list[i+dir]; if(!o)return;
+  // normaliza orden y luego intercambia
+  const a={...c,order:i+dir}, b={...o,order:i};
+  try{ await writeCard(a); await writeCard(b); render(); }catch(e){ toast("No se pudo mover. Revisa tu conexión."); }
+}
+async function seed(){
+  const b=$("#seedBtn"); if(b){b.disabled=true;b.textContent="Cargando…";}
+  try{
+    const counters={};
+    for(const [kind,label,say,emoji] of DEFAULTS){
+      counters[kind]=(counters[kind]||0); await writeCard({id:uid(),kind,label,say,emoji,photo:"",hasAudio:false,order:counters[kind]++});
+    }
+    render(); toast("Ejemplos cargados.");
+  }catch(e){ toast("No se pudieron cargar los ejemplos."); render(); }
+}
+
+/* Editor */
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{ const max=520; let w=img.naturalWidth,h=img.naturalHeight; const s=Math.min(1,max/Math.max(w,h)); w=Math.round(w*s); h=Math.round(h*s);
+      const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h); URL.revokeObjectURL(url); res(cv.toDataURL("image/jpeg",0.78)); };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("img"));};
+    img.src=url;
+  });
+}
+function readAsDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(file);});}
+
+function openEditor(card,kind){
+  const isNew=!card;
+  const draft=isNew?{id:uid(),kind,label:"",say:"",emoji:"⭐",photo:"",hasAudio:false,order:ofKind(kind).reduce((m,c)=>Math.max(m,(c.order||0)+1),0)}:{...card};
+  let newAudio=undefined; // undefined = sin cambio, "" = quitar, dataURL = nuevo
+  const ed=$("#editor");
+  function draw(){
+    const hasAud = newAudio===undefined ? draft.hasAudio : !!newAudio;
+    ed.innerHTML='<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="edTitle">'+
+      '<h3 id="edTitle">'+(isNew?"Nueva tarjeta":"Editar tarjeta")+' · '+KIND_NAME[draft.kind]+'</h3>'+
+      '<div class="prevrow">'+picHTML(draft)+'<div class="btnrow">'+
+        '<span class="sbtn filebtn">📷 Elegir foto<input type="file" id="edPhoto" accept="image/*" aria-label="Elegir foto"></span>'+
+        (draft.photo?'<button class="sbtn" id="edNoPhoto">Quitar foto</button>':'')+
+      '</div></div>'+
+      '<label class="f" for="edLabel">Palabra en la tarjeta<input type="text" id="edLabel" maxlength="28" value="'+esc(draft.label)+'" placeholder="Ej.: Colegio"></label>'+
+      '<label class="f" for="edSay">Lo que dice la voz<small>Frase corta y siempre igual.</small><input type="text" id="edSay" maxlength="80" value="'+esc(draft.say)+'" placeholder="Ej.: Ahora vamos al colegio"></label>'+
+      '<label class="f" for="edEmoji">Dibujo si no hay foto<small>Un emoji.</small><input type="text" id="edEmoji" maxlength="8" value="'+esc(draft.emoji)+'"></label>'+
+      '<div class="f"><span style="font-weight:700;font-size:.9rem">Tu voz</span><small style="color:var(--muted)">'+(hasAud?"Esta tarjeta usa tu grabación.":"Sin grabación: usa la voz del celular.")+'</small>'+
+        '<div class="btnrow"><span class="sbtn filebtn">🎙️ Subir audio<input type="file" id="edAudio" accept="audio/*" aria-label="Subir audio"></span>'+
+        '<button class="sbtn" id="edTest">▶ Probar</button>'+(hasAud?'<button class="sbtn" id="edNoAudio">Quitar audio</button>':'')+'</div></div>'+
+      '<div id="edErr" role="alert" style="color:var(--danger);font-size:.9rem"></div>'+
+      '<div class="btnrow" style="justify-content:space-between"><div class="btnrow">'+(isNew?'':'<button class="sbtn dangerbtn" id="edDel">Borrar</button>')+'</div>'+
+        '<div class="btnrow"><button class="sbtn" id="edCancel">Cancelar</button><button class="sbtn primary" id="edSave">Guardar</button></div></div>'+
+      '<div id="edConfirm"></div></div>';
+    const sync=()=>{draft.label=$("#edLabel").value.trim();draft.say=$("#edSay").value.trim();draft.emoji=$("#edEmoji").value.trim()||"⭐";};
+    $("#edLabel").addEventListener("input",sync);$("#edSay").addEventListener("input",sync);$("#edEmoji").addEventListener("change",()=>{sync();draw();});
+    $("#edPhoto").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;sync();try{draft.photo=await compressImage(f);draw();}catch(err){$("#edErr").textContent="No se pudo abrir la foto. Prueba con otra imagen.";}});
+    const np=$("#edNoPhoto"); if(np) np.addEventListener("click",()=>{sync();draft.photo="";draw();});
+    $("#edAudio").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;sync();
+      if(f.size>180*1024){$("#edErr").textContent="El audio es muy largo ("+Math.round(f.size/1024)+" KB). Graba una frase corta, de menos de 10 segundos.";return;}
+      try{newAudio=await readAsDataURL(f);draw();}catch(err){$("#edErr").textContent="No se pudo leer el audio.";}});
+    const na=$("#edNoAudio"); if(na) na.addEventListener("click",()=>{sync();newAudio="";draw();});
+    $("#edTest").addEventListener("click",async()=>{sync();
+      if(newAudio){try{if(currentAudio)currentAudio.pause();currentAudio=new Audio(newAudio);await currentAudio.play();}catch(e){$("#edErr").textContent="Este formato de audio no se puede reproducir aquí. Prueba con .m4a o .mp3.";}return;}
+      if(newAudio===""){tts(draft.say||draft.label);return;}
+      speakCard(draft);});
+    $("#edCancel").addEventListener("click",close);
+    $("#edSave").addEventListener("click",async()=>{sync();
+      if(!draft.label){$("#edErr").textContent="Escribe la palabra de la tarjeta.";return;}
+      if(!draft.say) draft.say=draft.label;
+      const btn=$("#edSave");btn.disabled=true;btn.textContent="Guardando…";
+      try{
+        if(newAudio!==undefined){
+          draft.hasAudio=!!newAudio;
+          if(mode==="live"){ if(newAudio) await db.doc("audio/"+draft.id).set({data:newAudio}); else await db.doc("audio/"+draft.id).delete(); }
+          if(newAudio) audioCache[draft.id]=newAudio; else delete audioCache[draft.id];
+        }
+        await writeCard(draft); close(); render(); toast("Tarjeta guardada.");
+      }catch(err){btn.disabled=false;btn.textContent="Guardar";$("#edErr").textContent="No se pudo guardar. Revisa tu conexión e inténtalo otra vez.";}
+    });
+    const del=$("#edDel"); if(del) del.addEventListener("click",()=>{
+      $("#edConfirm").innerHTML='<div class="confirm"><span>¿Borrar «'+esc(draft.label)+'»? No se puede deshacer.</span><button class="sbtn dangerbtn" id="edDelYes">Sí, borrar</button><button class="sbtn" id="edDelNo">No</button></div>';
+      $("#edDelNo").addEventListener("click",()=>{$("#edConfirm").innerHTML="";});
+      $("#edDelYes").addEventListener("click",async()=>{
+        try{
+          cards=cards.filter(c=>c.id!==draft.id);
+          if(mode==="live"){await db.doc("cards/"+draft.id).delete(); if(draft.hasAudio) await db.doc("audio/"+draft.id).delete();}
+          const t=curToday(); if(t.change&&(t.change.replaces===draft.id||t.change.cardId===draft.id)) await saveToday({...t,change:null});
+          close(); render(); toast("Tarjeta borrada.");
+        }catch(err){$("#edErr").textContent="No se pudo borrar. Revisa tu conexión.";}
+      });
+    });
+  }
+  function close(){ed.hidden=true;ed.innerHTML="";}
+  draw(); ed.hidden=false; setTimeout(()=>{const l=$("#edLabel"); if(l&&isNew) l.focus();},50);
+  ed.onclick=e=>{if(e.target===ed)close();};
+}
+
+/* ---------- Datos ---------- */
+function startDemo(){
+  mode="demo";
+  const counters={};
+  cards=DEFAULTS.map(([kind,label,say,emoji])=>{counters[kind]=(counters[kind]||0);return {id:uid(),kind,label,say,emoji,photo:"",hasAudio:false,order:counters[kind]++};});
+  render();
+}
+/* ---------- Firebase ---------- */
+let auth=null, fsdb=null, currentUser=null, unsubSettings=null;
+function configured(){const c=window.FIREBASE_CONFIG;return !!(c&&c.apiKey&&c.projectId&&!/PEGA/i.test(c.apiKey));}
+function stopSubs(){[unsubCards,unsubToday,unsubSettings].forEach(u=>{try{u&&u();}catch(e){}});unsubCards=unsubToday=unsubSettings=null;}
+function showSignin(){
+  const o=$("#signin"); o.hidden=false;
+  o.innerHTML='<div class="signcard"><div class="signlogo" aria-hidden="true">'+
+    '<span style="background:var(--dia)"></span><span style="background:var(--emo)"></span><span style="background:var(--fam)"></span><span style="background:var(--pd)"></span></div>'+
+    '<h1>Mi Día</h1><p>Entra con la cuenta de Google de la familia. Usa la misma cuenta en el celular y en la tablet para ver las mismas tarjetas, fotos y audios.</p>'+
+    '<button class="done-btn" id="gIn" style="background:var(--dia);color:var(--dia-on)">Entrar con Google</button>'+
+    '<button class="pill-btn" id="demoIn">Probar sin cuenta</button><div id="signErr" role="alert" style="color:var(--danger);font-size:.9rem"></div></div>';
+  $("#gIn").addEventListener("click",async()=>{
+    const p=new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"});
+    try{ await auth.signInWithPopup(p); }
+    catch(e){
+      if(/popup|operation-not-supported|cancelled-popup/.test(e.code||"")){ try{ await auth.signInWithRedirect(p); }catch(e2){ $("#signErr").textContent="No se pudo abrir el inicio de sesión. Inténtalo otra vez."; } }
+      else if(e.code==="auth/unauthorized-domain") $("#signErr").textContent="Este dominio no está autorizado en Firebase. Agrégalo en Authentication › Settings › Authorized domains.";
+      else if(e.code!=="auth/popup-closed-by-user") $("#signErr").textContent="No se pudo iniciar sesión. Revisa tu conexión e inténtalo otra vez.";
+    }
+  });
+  $("#demoIn").addEventListener("click",()=>{ o.hidden=true; startDemo(); });
+}
+function hideSignin(){const o=$("#signin");o.hidden=true;o.innerHTML="";}
+async function connect(){
+  if(!configured()||!window.firebase){ demoReason="config"; startDemo(); return; }
+  try{
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    fsdb=firebase.firestore();
+    try{ await fsdb.enablePersistence({synchronizeTabs:true}); }catch(e){}
+    auth=firebase.auth();
+    try{ await auth.getRedirectResult(); }catch(e){ toast("No se pudo iniciar sesión. Inténtalo otra vez."); }
+  }catch(e){ demoReason="config"; startDemo(); return; }
+  auth.onAuthStateChanged(u=>{
+    currentUser=u; stopSubs();
+    if(!u){ db=null; cards=[]; mode="signin"; render(); showSignin(); return; }
+    hideSignin(); mode="loading"; render();
+    const base="users/"+u.uid+"/";
+    db={doc:p=>fsdb.doc(base+p),collection:p=>fsdb.collection(base+p)};
+    subscribe();
+  });
+}
+function subscribe(){
+  let gotCards=false, gotToday=false;
+  let timer=setTimeout(()=>{ if(mode==="loading"){ mode="live"; render(); } },10000);
+  const ready=()=>{ if(gotCards&&gotToday){ clearTimeout(timer); if(mode!=="live"){mode="live";} render(); } };
+  const fail=e=>{ clearTimeout(timer); mode="live"; render(); toast(e&&e.code==="permission-denied"?"Firebase rechazó el acceso. Revisa las reglas de Firestore.":"No se pudieron cargar las tarjetas. Revisa tu conexión."); };
+  unsubCards=db.collection("cards").onSnapshot(snap=>{
+    cards=snap.docs.map(d=>({id:d.id,...d.data()})); gotCards=true; ready(); if(mode==="live") render();
+  },fail);
+  unsubSettings=db.doc("settings/main").onSnapshot(s=>{
+    const d=s.exists?s.data():null; settings={childName:(d&&d.childName)||""};
+    if(mode==="live" && screen!=="padres") render();
+  },()=>{});
+  unsubToday=db.doc("state/today").onSnapshot(s=>{
+    const d=s.exists?s.data():null;
+    today=d?{date:d.date||"",done:Array.isArray(d.done)?d.done.slice():[],change:d.change||null,current:d.current||null}:{date:"",done:[],change:null,current:null};
+    gotToday=true; ready(); if(mode==="live") render();
+  },err=>{ gotToday=true; ready(); });
+}
+go("dia");
+connect();
+/* Si cambia el día con la app abierta, refresca */
+setInterval(()=>{ if(today.date && today.date!==todayKey() && screen==="dia") render(); },60000);
+})();
+</script>
+
+</body>
+</html>

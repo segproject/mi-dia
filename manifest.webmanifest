@@ -1,0 +1,17 @@
+{
+  "name": "Mi Día",
+  "short_name": "Mi Día",
+  "description": "Agenda visual con voz, emociones y familia.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F2F5F7",
+  "theme_color": "#1F63B0",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
